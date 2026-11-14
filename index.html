@@ -116,7 +116,7 @@
             <div class="bg-cardBg p-5 rounded-2xl border border-slate-800 shadow-xl flex flex-col md:flex-row gap-4 items-center justify-between">
                 <div>
                     <h2 class="text-xl font-bold">سجلات العاملين (بطاقات الموظفين وجداول العرض)</h2>
-                    <p class="text-xs text-slate-400">عرض بيانات الموظفين إما كبطاقات مستقلة أو كجدول زمني متكامل قابل للطباعة</p>
+                    <p class="text-xs text-slate-400">عرض بيانات الموظفين إما كبطاقات مستقلة تحتوي تفاصيل الحركات أو كجدول زمني شامل</p>
                 </div>
 
                 <div class="flex items-center gap-2">
@@ -611,7 +611,7 @@
                 return;
             }
 
-            filteredRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
+            filteredRecords.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
 
             filteredRecords.forEach(rec => {
                 let badgeColor = "bg-blue-500/20 text-blue-400 border-blue-500/30";
@@ -657,6 +657,9 @@
                     empRecords = empRecords.filter(r => r.date.startsWith(monthFilter));
                 }
 
+                // ترتيب السجلات بحيث يكون الأحدث (آخر تعديل أو إضافة) في البداية
+                empRecords.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+
                 let recordsHtml = '';
                 if (empRecords.length === 0) {
                     recordsHtml = `<div class="text-center py-6 text-slate-500 text-xs">لا توجد سجلات مطابقة لهذا الموظف</div>`;
@@ -673,9 +676,9 @@
                                     <span class="mr-2 px-2 py-0.5 rounded border text-[10px] ${badgeColor}">${rec.status} ${rec.penalty ? `(رقم: ${rec.penalty})` : ''}</span>
                                 </div>
                                 <div class="flex gap-1">
-                                    <button onclick="printSingleRecord(${rec.id})" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded text-[10px]"><i class="fa-solid fa-print"></i></button>
-                                    ${(currentUserRole === 'admin' || currentUserRole === 'supervisor') ? `<button onclick="openEditModal(${rec.id})" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 px-2.5 py-1.5 rounded text-[10px]"><i class="fa-solid fa-pen"></i></button>` : ''}
-                                    ${currentUserRole === 'admin' ? `<button onclick="deleteRecord(${rec.id})" class="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-2.5 py-1.5 rounded text-[10px]"><i class="fa-solid fa-trash"></i></button>` : ''}
+                                    <button onclick="printSingleRecord(${rec.id})" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded text-[10px]" title="طباعة"><i class="fa-solid fa-print"></i></button>
+                                    ${(currentUserRole === 'admin' || currentUserRole === 'supervisor') ? `<button onclick="openEditModal(${rec.id})" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 px-2.5 py-1.5 rounded text-[10px]" title="تعديل"><i class="fa-solid fa-pen"></i></button>` : ''}
+                                    ${currentUserRole === 'admin' ? `<button onclick="deleteRecord(${rec.id})" class="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-2.5 py-1.5 rounded text-[10px]" title="حذف"><i class="fa-solid fa-trash"></i></button>` : ''}
                                 </div>
                             </div>
                         `;
@@ -695,11 +698,11 @@
                     <div class="grid grid-cols-2 gap-2 bg-slate-900/40 p-2 rounded-xl border border-slate-800/80">
                         <div>
                             <label class="text-[10px] text-slate-400 block mb-0.5">فلترة بالتاريخ</label>
-                            <input type="date" id="filter-date-${emp}" value="${dateFilter}" onchange="renderEmployeeCards()" class="w-full bg-inputBg border border-slate-700 text-[11px] rounded-lg p-1.5 text-slate-200 focus:outline-none focus:border-blue-500">
+                            <input type="date" id="filter-date-${CSS.escape(emp)}" value="${dateFilter}" onchange="renderEmployeeCards()" class="w-full bg-inputBg border border-slate-700 text-[11px] rounded-lg p-1.5 text-slate-200 focus:outline-none focus:border-blue-500">
                         </div>
                         <div>
                             <label class="text-[10px] text-slate-400 block mb-0.5">فلترة بالشهر</label>
-                            <input type="month" id="filter-month-${emp}" value="${monthFilter}" onchange="renderEmployeeCards()" class="w-full bg-inputBg border border-slate-700 text-[11px] rounded-lg p-1.5 text-slate-200 focus:outline-none focus:border-blue-500">
+                            <input type="month" id="filter-month-${CSS.escape(emp)}" value="${monthFilter}" onchange="renderEmployeeCards()" class="w-full bg-inputBg border border-slate-700 text-[11px] rounded-lg p-1.5 text-slate-200 focus:outline-none focus:border-blue-500">
                         </div>
                     </div>
 
@@ -775,13 +778,18 @@
             const rec = records.find(r => r.id === id);
             if (!rec) return;
 
-            const printWindow = window('', '', 'height=600,width=800');
+            const printWindow = window.open('', '_blank', 'height=600,width=800');
+            if (!printWindow) {
+                alert("يرجى السماح بفتح النوافذ المنبثقة (Pop-ups) من إعدادات المتصفح لتمكين الطباعة.");
+                return;
+            }
+
             printWindow.document.write(`
                 <html lang="ar" dir="rtl">
                 <head>
                     <title>طباعة سجل - ${rec.name}</title>
                     <style>
-                        body { font-family: 'Cairo', sans-serif; padding: 30px; color: #000; }
+                        body { font-family: 'Cairo', sans-serif; padding: 30px; color: #000; direction: rtl; text-align: right; }
                         .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
                         .details { font-size: 16px; line-height: 2; }
                     </style>
@@ -797,12 +805,15 @@
                         <p><strong>الحالة:</strong> ${rec.status}</p>
                         ${rec.penalty ? `<p><strong>رقم العقوبة:</strong> ${rec.penalty}</p>` : ''}
                     </div>
+                    <script>
+                        window.onload = function() {
+                            window.print();
+                        }
+                    <\/script>
                 </body>
                 </html>
             `);
             printWindow.document.close();
-            printWindow.focus();
-            setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
         }
 
         function printAllRecords() {
@@ -813,7 +824,14 @@
                 targetRecords = records.filter(r => r.date === filterDate);
             }
 
-            const printWindow = window('', '', 'height=600,width=800');
+            targetRecords.sort((a, b) => new Date(b.date) - new Date(a.date) || b.id - a.id);
+
+            const printWindow = window.open('', '_blank', 'height=600,width=800');
+            if (!printWindow) {
+                alert("يرجى السماح بفتح النوافذ المنبثقة (Pop-ups) من إعدادات المتصفح لتمكين الطباعة.");
+                return;
+            }
+
             let rowsHtml = targetRecords.map(r => `
                 <tr>
                     <td style="border: 1px solid #ddd; padding: 8px;">${r.name}</td>
@@ -828,7 +846,7 @@
                 <head>
                     <title>تقرير سجلات العاملين</title>
                     <style>
-                        body { font-family: 'Cairo', sans-serif; padding: 20px; }
+                        body { font-family: 'Cairo', sans-serif; padding: 20px; direction: rtl; text-align: right; }
                         h2 { text-align: center; margin-bottom: 5px; }
                         p { text-align: center; color: #555; font-size: 13px; margin-bottom: 20px; }
                         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -852,12 +870,15 @@
                             ${rowsHtml}
                         </tbody>
                     </table>
+                    <script>
+                        window.onload = function() {
+                            window.print();
+                        }
+                    <\/script>
                 </body>
                 </html>
             `);
             printWindow.document.close();
-            printWindow.focus();
-            setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
         }
 
         function addEmployee() {
