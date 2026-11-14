@@ -73,23 +73,29 @@
             <div class="bg-cardBg border-4 border-slate-700 rounded-[40px] shadow-2xl p-5 relative overflow-hidden flex flex-col h-[640px]">
                 <div class="w-28 h-4 bg-slate-700 rounded-full mx-auto mb-4"></div>
 
-                <div class="text-center mb-5">
+                <div class="text-center mb-4">
                     <h2 class="text-base font-bold text-slate-200">تسجيل الحركات اليومية</h2>
                     <p class="text-xs text-slate-400">إدخال الغياب والإجازات والعقوبات</p>
                 </div>
 
-                <div class="bg-slate-900/90 p-3 rounded-2xl border border-slate-700/80 flex items-center justify-between mb-4 shadow-inner">
+                <!-- Global Date Picker for Inputs (Optional / Defaults to Today) -->
+                <div class="bg-slate-900/90 p-2.5 rounded-2xl border border-slate-700/80 mb-3 shadow-inner">
+                    <label class="text-[10px] text-slate-400 block mb-1">تاريخ الإدخال (تلقائي لليوم أو قابل للتغيير)</label>
                     <div class="flex items-center gap-2">
                         <i class="fa-regular fa-calendar-days text-blue-400"></i>
-                        <input type="date" id="input-date" class="bg-transparent text-sm text-slate-200 font-semibold focus:outline-none cursor-pointer">
+                        <input type="date" id="input-date" class="bg-transparent text-xs sm:text-sm text-slate-200 font-semibold focus:outline-none cursor-pointer w-full">
                     </div>
-                    <button onclick="addInputRow()" class="w-9 h-9 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-xl flex items-center justify-center transition shadow-lg shadow-blue-600/30">
-                        <i class="fa-solid fa-plus text-sm"></i>
+                </div>
+
+                <div class="flex items-center justify-between mb-2 px-1">
+                    <span class="text-xs text-slate-400 font-semibold">قائمة الموظفين المدخلين:</span>
+                    <button onclick="addInputRow()" class="w-8 h-8 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-xl flex items-center justify-center transition shadow-lg shadow-blue-600/30" title="إضافة موظف">
+                        <i class="fa-solid fa-plus text-xs"></i>
                     </button>
                 </div>
 
                 <div id="rows-container" class="flex-grow overflow-y-auto no-scrollbar space-y-3 pr-1">
-                    <div class="text-center text-slate-500 text-xs py-20" id="empty-state">
+                    <div class="text-center text-slate-500 text-xs py-16" id="empty-state">
                         <i class="fa-solid fa-hand-pointer text-2xl mb-2 block opacity-40"></i>
                         اضغط على علامة ( + ) لإضافة موظف
                     </div>
@@ -434,10 +440,10 @@
         }
 
         function saveAllInputs() {
-            const dateVal = document.getElementById('input-date').value;
+            let dateVal = document.getElementById('input-date').value;
             if (!dateVal) {
-                alert("يرجى تحديد التاريخ أولاً!");
-                return;
+                // Fallback to today if left completely blank
+                dateVal = new Date().toISOString().split('T')[0];
             }
 
             const rowElements = document.querySelectorAll('#rows-container > div[id^="row-"]');
@@ -467,7 +473,7 @@
             if (newRecordsCount > 0) {
                 alert(`تم حفظ ${newRecordsCount} سجل بنجاح إلى قاعدة البيانات!`);
                 document.getElementById('rows-container').innerHTML = `
-                    <div class="text-center text-slate-500 text-xs py-20" id="empty-state">
+                    <div class="text-center text-slate-500 text-xs py-16" id="empty-state">
                         <i class="fa-solid fa-hand-pointer text-2xl mb-2 block opacity-40"></i>
                         اضغط على علامة ( + ) لإضافة موظف
                     </div>
