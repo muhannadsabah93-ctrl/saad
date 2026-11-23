@@ -116,7 +116,7 @@
             <div class="bg-cardBg p-6 rounded-2xl border border-slate-800 shadow-xl flex flex-col md:flex-row gap-4 items-center justify-between">
                 <div>
                     <h2 class="text-xl sm:text-2xl font-bold">سجلات العاملين (بطاقات الموظفين وجداول العرض)</h2>
-                    <p class="text-sm text-slate-400 mt-1">مرتبة من الأقدم في البداية إلى الأحدث في الأخير مع استمرار الإجازة المفتوحة يومياً حتى العودة</p>
+                    <p class="text-sm text-slate-400 mt-1">مرتبة من الأقدم في البداية إلى الأحدث في الأخير مع متابعة الإجازات المفتوحة والعقوبات</p>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2.5">
@@ -183,6 +183,7 @@
                                 <th class="p-4">التاريخ</th>
                                 <th class="p-4">الحالة</th>
                                 <th class="p-4">رقم العقوبة</th>
+                                <th class="p-4">مبلغ العقوبة</th>
                                 <th class="p-4 text-center">الإجراءات</th>
                             </tr>
                         </thead>
@@ -283,9 +284,15 @@
                         </select>
                     </div>
                 </div>
-                <div id="edit-penalty-box" class="hidden">
-                    <label class="text-slate-400 block mb-1 font-semibold">رقم العقوبة</label>
-                    <input type="number" id="edit-record-penalty" placeholder="رقم العقوبة..." class="w-full bg-inputBg border border-slate-700 rounded-2xl px-4 py-3 text-slate-200 font-bold">
+                <div id="edit-penalty-box" class="hidden grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-slate-400 block mb-1 font-semibold">رقم العقوبة</label>
+                        <input type="number" id="edit-record-penalty" placeholder="رقم العقوبة..." class="w-full bg-inputBg border border-slate-700 rounded-2xl px-4 py-3 text-slate-200 font-bold">
+                    </div>
+                    <div>
+                        <label class="text-slate-400 block mb-1 font-semibold">مبلغ العقوبة</label>
+                        <input type="number" step="any" id="edit-record-penalty-amount" placeholder="مبلغ العقوبة..." class="w-full bg-inputBg border border-slate-700 rounded-2xl px-4 py-3 text-slate-200 font-bold">
+                    </div>
                 </div>
             </div>
             <div class="flex gap-3 justify-end pt-2">
@@ -387,6 +394,13 @@
             return status;
         }
 
+        function formatAmount(val) {
+            if (val === undefined || val === null || val === '') return '-';
+            const num = Number(val);
+            if (isNaN(num)) return String(val);
+            return num.toLocaleString('ar-IQ');
+        }
+
         function getStatusBadgeStyle(status) {
             if (status === 'إجازة مفتوحة') return "bg-amber-500/20 text-amber-300 border-amber-500/40";
             if (status === 'إجازة') return "bg-sky-500/20 text-sky-300 border-sky-500/30";
@@ -428,9 +442,7 @@
             return Math.max(1, diffDays);
         }
 
-        // توسيع الإجازة المفتوحة لتظهر يومياً من تاريخ بدئها (مثلاً يوم 22، 23، 24، 25...)
-        // لحين تسجيل "عودة من الإجازة" (أو حتى تاريخ اليوم إذا لم يسجل عودة بعد).
-        // يمكن تعديل أو حذف السجل الأصلي للإجازة المفتوحة، بينما الأيام المولّدة تلقائياً تُعرض للمتابعة اليومية.
+        // توسيع الإجازة المفتوحة لتظهر يومياً من تاريخ بدئها لحين تسجيل "عودة من الإجازة"
         function getExpandedRecords(rawRecords) {
             const todayStr = formatLocalDate(new Date());
             const sortedRaw = [...rawRecords].sort(compareRecordsOldestFirst);
@@ -445,7 +457,7 @@
 
             Object.keys(byEmployee).forEach(empName => {
                 const empList = byEmployee[empName];
-                let activeOpenLeave = null; // { sourceRecord, startDate, endDate }
+                let activeOpenLeave = null;
 
                 const flushOpenLeave = (endDateStr, inclusiveEnd) => {
                     if (!activeOpenLeave) return;
@@ -680,15 +692,21 @@
                         <option value="عقوبة" ${prefillStatus === 'عقوبة' ? 'selected' : ''}>عقوبة</option>
                     </select>
                 </div>
-                <div class="penalty-box hidden">
-                    <input type="number" placeholder="رقم العقوبة..." class="row-penalty w-full bg-inputBg border border-slate-700 text-sm rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 font-semibold">
+                <div class="penalty-box hidden grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1 font-semibold">رقم العقوبة</label>
+                        <input type="number" placeholder="رقم العقوبة..." class="row-penalty w-full bg-inputBg border border-slate-700 text-sm rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 font-semibold">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1 font-semibold">مبلغ العقوبة</label>
+                        <input type="number" step="any" placeholder="مبلغ العقوبة..." class="row-penalty-amount w-full bg-inputBg border border-slate-700 text-sm rounded-xl px-3.5 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 font-semibold">
+                    </div>
                 </div>
             `;
             container.appendChild(rowDiv);
             populateDropdownOptions(rowDiv.querySelector('.dropdown-results'), employees);
         }
 
-        // زر سريع من داخل الكارت لتسجيل عودة الموظف من الإجازة المفتوحة
         function quickReturnFromLeave(empName) {
             if (!canEditRecord()) {
                 alert("يرجى تسجيل الدخول بصلاحية مشرف أو أدمن لتسجيل العودة.");
@@ -702,7 +720,8 @@
                 name: empName,
                 date: today,
                 status: 'عودة من الإجازة',
-                penalty: ''
+                penalty: '',
+                penaltyAmount: ''
             };
 
             records.push(newRec);
@@ -778,14 +797,16 @@
                 const nameInput = row.querySelector('.row-name-input');
                 const statusSelect = row.querySelector('.row-status');
                 const penaltyInput = row.querySelector('.row-penalty');
+                const penaltyAmountInput = row.querySelector('.row-penalty-amount');
 
                 const name = nameInput ? nameInput.value.trim() : '';
                 const status = statusSelect ? statusSelect.value : 'إجازة';
-                const penalty = penaltyInput ? penaltyInput.value : '';
+                const penalty = status === 'عقوبة' && penaltyInput ? penaltyInput.value.trim() : '';
+                const penaltyAmount = status === 'عقوبة' && penaltyAmountInput ? penaltyAmountInput.value.trim() : '';
 
                 if (name) {
                     const recordId = Date.now() + Math.floor(Math.random() * 1000);
-                    const newRec = { id: recordId, name, date: dateVal, status, penalty };
+                    const newRec = { id: recordId, name, date: dateVal, status, penalty, penaltyAmount };
                     records.push(newRec);
 
                     if (db) {
@@ -854,9 +875,6 @@
             }
         }
 
-        // حساب حالة الموظف الحالية وعدّاد أيام الإجازة المفتوحة:
-        // - "إجازة" تعتبر ليوم واحد ولا تفتح إجازة مستمرة
-        // - "إجازة مفتوحة" تبقى مستمرة وتعد الأيام لحين تسجيل "عودة من الإجازة"
         function getEmployeeCurrentStatus(empName, allRecords) {
             const chronological = [...allRecords]
                 .filter(r => r.name === empName)
@@ -904,10 +922,65 @@
             };
         }
 
+        function getEmployeePenaltySummary(empName, allRecords) {
+            const penalties = [...allRecords]
+                .filter(r => r.name === empName && r.status === 'عقوبة')
+                .sort(compareRecordsOldestFirst);
+
+            let totalAmount = 0;
+            penalties.forEach(p => {
+                const amt = Number(p.penaltyAmount);
+                if (!isNaN(amt) && p.penaltyAmount !== '' && p.penaltyAmount !== undefined) {
+                    totalAmount += amt;
+                }
+            });
+
+            const lastPenalty = penalties.length > 0 ? penalties[penalties.length - 1] : null;
+            return {
+                count: penalties.length,
+                totalAmount,
+                lastPenalty
+            };
+        }
+
+        // دالة حساب ملخص الإحصائيات لكل موظف (أيام الغياب، أيام الإجازات، ومبلغ العقوبات)
+        function calculateEmployeeCardSummary(empExpandedRecords) {
+            let absenceDays = 0;
+            let leaveDays = 0;
+            let totalPenaltyAmount = 0;
+
+            empExpandedRecords.forEach(rec => {
+                if (rec.status === 'غياب') {
+                    absenceDays += 1;
+                } else if (rec.status === 'إجازة' || rec.status === 'إجازة مفتوحة') {
+                    leaveDays += 1;
+                } else if (rec.status === 'عقوبة') {
+                    const amt = Number(rec.penaltyAmount);
+                    if (!isNaN(amt) && rec.penaltyAmount !== '' && rec.penaltyAmount !== undefined && rec.penaltyAmount !== null) {
+                        totalPenaltyAmount += amt;
+                    }
+                }
+            });
+
+            return {
+                absenceDays,
+                leaveDays,
+                totalPenaltyAmount
+            };
+        }
+
         function formatDisplayRecordStatus(rec) {
             if (rec.status === 'إجازة مفتوحة') {
                 const dayNum = rec.leaveDayNumber || 1;
                 return `إجازة مفتوحة (اليوم ${dayNum})`;
+            }
+            if (rec.status === 'عقوبة') {
+                const parts = ['عقوبة'];
+                if (rec.penalty) parts.push(`رقم: ${rec.penalty}`);
+                if (rec.penaltyAmount !== undefined && rec.penaltyAmount !== null && String(rec.penaltyAmount).trim() !== '') {
+                    parts.push(`المبلغ: ${formatAmount(rec.penaltyAmount)}`);
+                }
+                return parts.join(' | ');
             }
             return formatStatusLabel(rec.status);
         }
@@ -928,13 +1001,12 @@
                 filteredRecords = filteredRecords.filter(r => (r.name || '').toLowerCase().includes(searchQuery));
             }
 
-            // ترتيب السجلات: الأقدم في البداية والأحدث في الأخير
             filteredRecords.sort(compareRecordsOldestFirst);
 
             countBadge.innerText = `عدد السجلات: ${filteredRecords.length}`;
 
             if (filteredRecords.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-slate-500 text-base font-semibold">لا توجد سجلات مطابقة للعرض</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-slate-500 text-base font-semibold">لا توجد سجلات مطابقة للعرض</td></tr>`;
                 return;
             }
 
@@ -960,6 +1032,7 @@
                     <td class="p-4 text-slate-300">${rec.date}</td>
                     <td class="p-4"><span class="px-3 py-1.5 rounded-xl border text-xs sm:text-sm font-bold ${badgeColor}">${statusLabel}</span></td>
                     <td class="p-4 text-slate-300">${rec.penalty ? rec.penalty : '-'}</td>
+                    <td class="p-4 text-orange-300">${rec.status === 'عقوبة' ? formatAmount(rec.penaltyAmount) : '-'}</td>
                     <td class="p-4 text-center flex justify-center gap-2">${actionButtonsHtml}</td>
                 `;
                 tbody.appendChild(tr);
@@ -1025,6 +1098,7 @@
                 const monthFilter = savedMonthFilters[emp] || '';
 
                 const currentEmpStatus = getEmployeeCurrentStatus(emp, records);
+                const penaltySummary = getEmployeePenaltySummary(emp, records);
 
                 let empRecords = allExpanded.filter(r => r.name === emp);
                 if (dateFilter) {
@@ -1034,8 +1108,12 @@
                     empRecords = empRecords.filter(r => (r.date || '').startsWith(monthFilter));
                 }
 
-                // ترتيب سجلات الموظف: الأقدم في البداية والأحدث في الأخير
                 empRecords.sort(compareRecordsOldestFirst);
+
+                // حساب ملخص أيام الغياب وأيام الإجازات ومبلغ العقوبات (مرتبطة بالسجلات المعروضة/المفلترة للكارت)
+                const cardSummary = calculateEmployeeCardSummary(empRecords);
+                const formattedPenaltyTotal = cardSummary.totalPenaltyAmount.toLocaleString('ar-IQ');
+                const isFiltered = Boolean(dateFilter || monthFilter);
 
                 let recordsHtml = '';
                 if (empRecords.length === 0) {
@@ -1044,6 +1122,14 @@
                     empRecords.forEach(rec => {
                         const badgeColor = getStatusBadgeStyle(rec.status);
                         const statusText = formatDisplayRecordStatus(rec);
+
+                        const penaltyDetailsHtml = rec.status === 'عقوبة'
+                            ? `<div class="w-full text-xs text-orange-300 bg-orange-500/10 border border-orange-500/20 px-3 py-1.5 rounded-xl flex flex-wrap items-center gap-3 mt-1">
+                                <span><i class="fa-solid fa-calendar-day ml-1"></i>تاريخ العقوبة: <strong>${rec.date}</strong></span>
+                                ${rec.penalty ? `<span><i class="fa-solid fa-hashtag ml-1"></i>رقم العقوبة: <strong>${rec.penalty}</strong></span>` : ''}
+                                <span><i class="fa-solid fa-money-bill-wave ml-1"></i>المبلغ: <strong>${formatAmount(rec.penaltyAmount)}</strong></span>
+                               </div>`
+                            : '';
 
                         const controlsHtml = rec.isGeneratedContinuation
                             ? `<span class="text-xs text-slate-400 px-2">متابعة يومية</span>`
@@ -1057,9 +1143,10 @@
                             <div class="bg-slate-900/70 border border-slate-800 p-3.5 rounded-2xl flex flex-wrap justify-between items-center gap-2 text-sm font-semibold shadow-inner">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <span class="text-slate-200"><i class="fa-regular fa-calendar ml-1.5 text-blue-400"></i>${rec.date}</span>
-                                    <span class="px-2.5 py-1 rounded-xl border text-xs ${badgeColor} font-bold">${statusText} ${rec.penalty ? `(رقم: ${rec.penalty})` : ''}</span>
+                                    <span class="px-2.5 py-1 rounded-xl border text-xs ${badgeColor} font-bold">${statusText}</span>
                                 </div>
                                 <div class="flex gap-1.5 items-center">${controlsHtml}</div>
+                                ${penaltyDetailsHtml}
                             </div>
                         `;
                     });
@@ -1075,40 +1162,94 @@
                     }
                 }
 
-                let lastLeaveInfoHtml = '';
+                let infoBannersHtml = '';
                 if (!currentEmpStatus.isOnLeave && currentEmpStatus.lastCompletedLeave) {
                     const l = currentEmpStatus.lastCompletedLeave;
-                    lastLeaveInfoHtml = `<div class="text-xs text-slate-400 bg-slate-900/50 border border-slate-800/80 px-3 py-2 rounded-xl">آخر إجازة مفتوحة: من <strong class="text-slate-200">${l.startDate}</strong> إلى <strong class="text-slate-200">${l.endDate}</strong> (المدة: <strong class="text-emerald-400">${l.days} يوم</strong>)</div>`;
+                    infoBannersHtml += `<div class="text-xs text-slate-400 bg-slate-900/50 border border-slate-800/80 px-3 py-2 rounded-xl">آخر إجازة مفتوحة: من <strong class="text-slate-200">${l.startDate}</strong> إلى <strong class="text-slate-200">${l.endDate}</strong> (المدة: <strong class="text-emerald-400">${l.days} يوم</strong>)</div>`;
+                }
+
+                if (penaltySummary.count > 0 && penaltySummary.lastPenalty) {
+                    const lp = penaltySummary.lastPenalty;
+                    infoBannersHtml += `
+                        <div class="text-xs text-orange-300 bg-orange-500/10 border border-orange-500/25 px-3 py-2 rounded-xl flex flex-wrap justify-between items-center gap-2">
+                            <span><i class="fa-solid fa-gavel ml-1"></i>آخر عقوبة: بتاريخ <strong class="text-white">${lp.date}</strong> ${lp.penalty ? `(رقم: <strong class="text-white">${lp.penalty}</strong>)` : ''} — المبلغ: <strong class="text-white">${formatAmount(lp.penaltyAmount)}</strong></span>
+                            <span>إجمالي مبالغ العقوبات: <strong class="text-orange-200">${formatAmount(penaltySummary.totalAmount)}</strong></span>
+                        </div>
+                    `;
                 }
 
                 const card = document.createElement('div');
-                card.className = "bg-cardBg border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col space-y-4";
+                card.className = "bg-cardBg border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col justify-between space-y-4";
                 card.innerHTML = `
-                    <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3">
-                        <h3 class="font-bold text-base sm:text-lg text-slate-100 flex items-center gap-2.5">
-                            <i class="fa-solid fa-user-tie text-blue-400"></i> ${emp}
-                        </h3>
-                        <div class="flex flex-wrap items-center gap-2">
-                            ${liveStatusBadge}
-                            ${returnActionBtn}
+                    <div class="space-y-4">
+                        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3">
+                            <h3 class="font-bold text-base sm:text-lg text-slate-100 flex items-center gap-2.5">
+                                <i class="fa-solid fa-user-tie text-blue-400"></i> ${emp}
+                            </h3>
+                            <div class="flex flex-wrap items-center gap-2">
+                                ${liveStatusBadge}
+                                ${returnActionBtn}
+                            </div>
+                        </div>
+
+                        ${infoBannersHtml}
+
+                        <div class="grid grid-cols-2 gap-2.5 bg-slate-900/40 p-3 rounded-2xl border border-slate-800/80">
+                            <div>
+                                <label class="text-xs text-slate-400 block mb-1 font-semibold">فلترة بالتاريخ</label>
+                                <input type="date" id="filter-date-${CSS.escape(emp)}" value="${dateFilter}" onchange="renderEmployeeCards()" class="w-full bg-inputBg border border-slate-700 text-xs sm:text-sm rounded-xl p-2 text-slate-200 focus:outline-none focus:border-blue-500 font-bold">
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-400 block mb-1 font-semibold">فلترة بالشهر</label>
+                                <input type="month" id="filter-month-${CSS.escape(emp)}" value="${monthFilter}" onchange="renderEmployeeCards()" class="w-full bg-inputBg border border-slate-700 text-xs sm:text-sm rounded-xl p-2 text-slate-200 focus:outline-none focus:border-blue-500 font-bold">
+                            </div>
+                        </div>
+
+                        <div class="space-y-2.5 max-h-60 overflow-y-auto no-scrollbar pr-1">
+                            ${recordsHtml}
                         </div>
                     </div>
 
-                    ${lastLeaveInfoHtml}
-
-                    <div class="grid grid-cols-2 gap-2.5 bg-slate-900/40 p-3 rounded-2xl border border-slate-800/80">
-                        <div>
-                            <label class="text-xs text-slate-400 block mb-1 font-semibold">فلترة بالتاريخ</label>
-                            <input type="date" id="filter-date-${CSS.escape(emp)}" value="${dateFilter}" onchange="renderEmployeeCards()" class="w-full bg-inputBg border border-slate-700 text-xs sm:text-sm rounded-xl p-2 text-slate-200 focus:outline-none focus:border-blue-500 font-bold">
+                    <!-- شريط الملخص الإحصائي في أسفل الكارت -->
+                    <div class="pt-3 border-t border-slate-800/90">
+                        <div class="flex items-center justify-between mb-2 px-1">
+                            <span class="text-[11px] text-slate-400 font-bold">
+                                <i class="fa-solid fa-chart-simple text-blue-400 ml-1"></i>
+                                ${isFiltered ? 'ملخص الفترة المحددة:' : 'الملخص الإجمالي للموظف:'}
+                            </span>
+                            ${isFiltered ? `<button onclick="document.getElementById('filter-date-${CSS.escape(emp)}').value=''; document.getElementById('filter-month-${CSS.escape(emp)}').value=''; renderEmployeeCards();" class="text-[11px] text-blue-400 hover:text-blue-300 underline font-semibold">عرض الكل</button>` : ''}
                         </div>
-                        <div>
-                            <label class="text-xs text-slate-400 block mb-1 font-semibold">فلترة بالشهر</label>
-                            <input type="month" id="filter-month-${CSS.escape(emp)}" value="${monthFilter}" onchange="renderEmployeeCards()" class="w-full bg-inputBg border border-slate-700 text-xs sm:text-sm rounded-xl p-2 text-slate-200 focus:outline-none focus:border-blue-500 font-bold">
-                        </div>
-                    </div>
+                        <div class="grid grid-cols-3 gap-2 text-center">
+                            <!-- أيام الغياب -->
+                            <div class="bg-red-500/10 border border-red-500/25 rounded-2xl p-2.5 flex flex-col items-center justify-center">
+                                <span class="text-[11px] sm:text-xs text-red-300/90 font-semibold flex items-center gap-1">
+                                    <i class="fa-solid fa-user-xmark text-red-400"></i> أيام الغياب
+                                </span>
+                                <span class="text-sm sm:text-base font-extrabold text-red-400 mt-1">
+                                    ${cardSummary.absenceDays} <span class="text-[11px] font-semibold">يوم</span>
+                                </span>
+                            </div>
 
-                    <div class="space-y-2.5 max-h-60 overflow-y-auto no-scrollbar pr-1">
-                        ${recordsHtml}
+                            <!-- أيام الإجازات -->
+                            <div class="bg-sky-500/10 border border-sky-500/25 rounded-2xl p-2.5 flex flex-col items-center justify-center">
+                                <span class="text-[11px] sm:text-xs text-sky-300/90 font-semibold flex items-center gap-1">
+                                    <i class="fa-solid fa-calendar-check text-sky-400"></i> أيام الإجازات
+                                </span>
+                                <span class="text-sm sm:text-base font-extrabold text-sky-300 mt-1">
+                                    ${cardSummary.leaveDays} <span class="text-[11px] font-semibold">يوم</span>
+                                </span>
+                            </div>
+
+                            <!-- مبلغ العقوبات -->
+                            <div class="bg-orange-500/10 border border-orange-500/25 rounded-2xl p-2.5 flex flex-col items-center justify-center">
+                                <span class="text-[11px] sm:text-xs text-orange-300/90 font-semibold flex items-center gap-1">
+                                    <i class="fa-solid fa-coins text-orange-400"></i> مبلغ العقوبات
+                                </span>
+                                <span class="text-sm sm:text-base font-extrabold text-orange-300 mt-1 truncate max-w-full" title="${formattedPenaltyTotal}">
+                                    ${formattedPenaltyTotal}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 `;
                 grid.appendChild(card);
@@ -1124,6 +1265,7 @@
             document.getElementById('edit-record-date').value = rec.date;
             document.getElementById('edit-record-status').value = rec.status;
             document.getElementById('edit-record-penalty').value = rec.penalty || '';
+            document.getElementById('edit-record-penalty-amount').value = rec.penaltyAmount || '';
 
             toggleEditPenalty();
             document.getElementById('edit-modal').classList.remove('hidden');
@@ -1147,13 +1289,15 @@
             const id = Number(document.getElementById('edit-record-id').value);
             const date = document.getElementById('edit-record-date').value;
             const status = document.getElementById('edit-record-status').value;
-            const penalty = document.getElementById('edit-record-penalty').value;
+            const penalty = document.getElementById('edit-record-penalty').value.trim();
+            const penaltyAmount = document.getElementById('edit-record-penalty-amount').value.trim();
 
             const recIndex = records.findIndex(r => r.id === id);
             if (recIndex !== -1) {
                 records[recIndex].date = date;
                 records[recIndex].status = status;
                 records[recIndex].penalty = status === 'عقوبة' ? penalty : '';
+                records[recIndex].penaltyAmount = status === 'عقوبة' ? penaltyAmount : '';
 
                 if (db) {
                     db.ref('records/' + id).set(records[recIndex]);
@@ -1213,6 +1357,7 @@
                         <p><strong>التاريخ:</strong> ${displayDate}</p>
                         <p><strong>الحالة:</strong> ${labelText}</p>
                         ${rec.penalty ? `<p><strong>رقم العقوبة:</strong> ${rec.penalty}</p>` : ''}
+                        ${statusVal === 'عقوبة' ? `<p><strong>مبلغ العقوبة:</strong> ${formatAmount(rec.penaltyAmount)}</p>` : ''}
                     </div>
                     <script>
                         window.onload = function() {
@@ -1233,7 +1378,6 @@
                 targetRecords = targetRecords.filter(r => r.date === filterDate);
             }
 
-            // ترتيب السجلات: الأقدم في البداية والأحدث في الأخير
             targetRecords.sort(compareRecordsOldestFirst);
 
             const printWindow = window.open('', '_blank', 'height=600,width=800');
@@ -1248,6 +1392,7 @@
                     <td style="border: 1px solid #ddd; padding: 10px;">${r.date}</td>
                     <td style="border: 1px solid #ddd; padding: 10px;">${formatDisplayRecordStatus(r)}</td>
                     <td style="border: 1px solid #ddd; padding: 10px;">${r.penalty || '-'}</td>
+                    <td style="border: 1px solid #ddd; padding: 10px;">${r.status === 'عقوبة' ? formatAmount(r.penaltyAmount) : '-'}</td>
                 </tr>
             `).join('');
 
@@ -1274,6 +1419,7 @@
                                 <th>التاريخ</th>
                                 <th>الحالة</th>
                                 <th>رقم العقوبة</th>
+                                <th>مبلغ العقوبة</th>
                             </tr>
                         </thead>
                         <tbody>
