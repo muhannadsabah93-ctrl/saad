@@ -116,7 +116,7 @@
             <div class="bg-cardBg p-6 rounded-2xl border border-slate-800 shadow-xl flex flex-col md:flex-row gap-4 items-center justify-between">
                 <div>
                     <h2 class="text-xl sm:text-2xl font-bold">سجلات العاملين (بطاقات الموظفين وجداول العرض)</h2>
-                    <p class="text-sm text-slate-400 mt-1">مرتبة من الأحدث أولاً مع متابعة الإجازات المفتوحة وحالات العودة</p>
+                    <p class="text-sm text-slate-400 mt-1">مرتبة من الأقدم في البداية إلى الأحدث في الأخير مع استمرار الإجازة المفتوحة يومياً حتى العودة</p>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2.5">
@@ -160,7 +160,7 @@
                     <button onclick="resetTableFilters()" class="text-slate-400 hover:text-white text-xs underline">إلغاء التصفية</button>
                 </div>
                 <div class="text-xs text-slate-400">
-                    مرتب من الأحدث إلى الأقدم
+                    مرتب من الأقدم في البداية إلى الأحدث في الأخير
                 </div>
             </div>
 
@@ -198,19 +198,19 @@
             <div class="bg-cardBg p-6 sm:p-8 rounded-2xl border border-slate-800 shadow-xl space-y-6">
                 <div class="border-b border-slate-800 pb-4">
                     <h2 class="text-xl sm:text-2xl font-bold">لوحة التحكم الإدارية</h2>
-                    <p class="text-sm text-slate-400 mt-1">إدارة أسماء العاملين وصلاحيات المستخدمين والرموز السرية</p>
+                    <p class="text-sm text-slate-400 mt-1">إدارة وتعديل أسماء العاملين وصلاحيات المستخدمين والرموز السرية</p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 space-y-4">
                         <h3 class="font-bold text-sm sm:text-base text-blue-400 flex items-center gap-2">
-                            <i class="fa-solid fa-user-plus"></i> إضافة موظف جديد للقائمة
+                            <i class="fa-solid fa-user-plus"></i> إضافة وتعديل أسماء الموظفين
                         </h3>
                         <div class="flex gap-2">
                             <input type="text" id="new-emp-name" placeholder="اسم الموظف الثلاثي..." class="flex-grow bg-inputBg border border-slate-700 text-sm rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-blue-500 font-semibold">
                             <button onclick="addEmployee()" class="bg-blue-600 hover:bg-blue-500 px-5 py-2.5 text-sm font-bold rounded-xl transition">إضافة</button>
                         </div>
-                        <div id="employees-list-ctrl" class="max-h-48 overflow-y-auto space-y-2 pr-1 text-sm">
+                        <div id="employees-list-ctrl" class="max-h-56 overflow-y-auto space-y-2 pr-1 text-sm">
                         </div>
                     </div>
 
@@ -295,6 +295,23 @@
         </div>
     </div>
 
+    <!-- Edit Employee Name Modal -->
+    <div id="edit-emp-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-cardBg border border-slate-700 w-full max-w-md p-6 sm:p-7 rounded-3xl shadow-2xl space-y-5">
+            <h3 class="text-lg font-bold text-blue-400"><i class="fa-solid fa-user-pen ml-1.5"></i> تعديل اسم الموظف</h3>
+            <input type="hidden" id="old-emp-name">
+            <div class="space-y-2 text-sm">
+                <label class="text-slate-400 block font-semibold">الاسم الجديد للموظف</label>
+                <input type="text" id="edit-emp-name-input" placeholder="أدخل الاسم الجديد..." class="w-full bg-inputBg border border-slate-700 rounded-2xl px-4 py-3 text-slate-200 focus:outline-none focus:border-blue-500 font-bold">
+                <p class="text-xs text-slate-400">سيتم تحديث الاسم في قائمة الموظفين وجميع السجلات السابقة.</p>
+            </div>
+            <div class="flex gap-3 justify-end pt-2">
+                <button onclick="closeEditEmpModal()" class="bg-slate-700 hover:bg-slate-600 px-5 py-2.5 text-sm font-bold rounded-xl transition">إلغاء</button>
+                <button onclick="saveEditedEmployeeName()" class="bg-blue-600 hover:bg-blue-500 px-6 py-2.5 text-sm font-bold rounded-xl transition shadow-lg shadow-blue-600/20">حفظ الاسم</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="bg-cardBg border-t border-slate-800 p-4 text-center text-xs sm:text-sm text-slate-400">
         جميع الحقوق محفوظة &copy; 2026 - نظام الحضور والغياب لمعامل القالب
@@ -341,22 +358,17 @@
         let pendingTargetTab = null;
         let isTableView = false;
 
-        // دالة موحدة لترتيب السجلات من الأحدث إلى الأقدم
-        function compareRecordsNewestFirst(a, b) {
-            const dateA = a.date || '';
-            const dateB = b.date || '';
-            if (dateA !== dateB) {
-                return dateB.localeCompare(dateA);
-            }
-            return (Number(b.id) || 0) - (Number(a.id) || 0);
-        }
-
-        // دالة ترتيب زمني تصاعدي لتتبع سلسلة الإجازات المفتوحة والعودة بدقة
-        function compareRecordsChronological(a, b) {
+        // دالة موحدة لترتيب السجلات: الأقدم في البداية والأحدث في الأخير
+        function compareRecordsOldestFirst(a, b) {
             const dateA = a.date || '';
             const dateB = b.date || '';
             if (dateA !== dateB) {
                 return dateA.localeCompare(dateB);
+            }
+            const orderA = a.sortOrder ?? 0;
+            const orderB = b.sortOrder ?? 0;
+            if (orderA !== orderB) {
+                return orderA - orderB;
             }
             return (Number(a.id) || 0) - (Number(b.id) || 0);
         }
@@ -384,8 +396,142 @@
             return "bg-blue-500/20 text-blue-400 border-blue-500/30";
         }
 
+        function parseLocalDate(dateStr) {
+            const parts = (dateStr || '').split('-');
+            if (parts.length !== 3) return null;
+            const y = Number(parts[0]);
+            const m = Number(parts[1]) - 1;
+            const d = Number(parts[2]);
+            const dt = new Date(y, m, d);
+            return isNaN(dt.getTime()) ? null : dt;
+        }
+
+        function formatLocalDate(dt) {
+            const y = dt.getFullYear();
+            const m = String(dt.getMonth() + 1).padStart(2, '0');
+            const d = String(dt.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function addDaysToDateStr(dateStr, daysToAdd) {
+            const dt = parseLocalDate(dateStr);
+            if (!dt) return dateStr;
+            dt.setDate(dt.getDate() + daysToAdd);
+            return formatLocalDate(dt);
+        }
+
+        function calculateDaysBetween(startDateStr, endDateStr) {
+            const start = parseLocalDate(startDateStr);
+            const end = parseLocalDate(endDateStr);
+            if (!start || !end) return 1;
+            const diffDays = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+            return Math.max(1, diffDays);
+        }
+
+        // توسيع الإجازة المفتوحة لتظهر يومياً من تاريخ بدئها (مثلاً يوم 22، 23، 24، 25...)
+        // لحين تسجيل "عودة من الإجازة" (أو حتى تاريخ اليوم إذا لم يسجل عودة بعد).
+        // يمكن تعديل أو حذف السجل الأصلي للإجازة المفتوحة، بينما الأيام المولّدة تلقائياً تُعرض للمتابعة اليومية.
+        function getExpandedRecords(rawRecords) {
+            const todayStr = formatLocalDate(new Date());
+            const sortedRaw = [...rawRecords].sort(compareRecordsOldestFirst);
+
+            const byEmployee = {};
+            sortedRaw.forEach(r => {
+                if (!byEmployee[r.name]) byEmployee[r.name] = [];
+                byEmployee[r.name].push(r);
+            });
+
+            const expanded = [];
+
+            Object.keys(byEmployee).forEach(empName => {
+                const empList = byEmployee[empName];
+                let activeOpenLeave = null; // { sourceRecord, startDate, endDate }
+
+                const flushOpenLeave = (endDateStr, inclusiveEnd) => {
+                    if (!activeOpenLeave) return;
+                    const startDt = parseLocalDate(activeOpenLeave.startDate);
+                    const endDt = parseLocalDate(endDateStr);
+                    if (!startDt || !endDt) {
+                        activeOpenLeave = null;
+                        return;
+                    }
+
+                    const cursor = new Date(startDt.getFullYear(), startDt.getMonth(), startDt.getDate());
+                    const finalDt = new Date(endDt.getFullYear(), endDt.getMonth(), endDt.getDate());
+                    if (!inclusiveEnd) {
+                        finalDt.setDate(finalDt.getDate() - 1);
+                    }
+
+                    let dayCounter = 1;
+                    while (cursor <= finalDt) {
+                        const dayStr = formatLocalDate(cursor);
+                        const isOriginalDay = (dayStr === activeOpenLeave.startDate);
+                        expanded.push({
+                            ...activeOpenLeave.sourceRecord,
+                            id: activeOpenLeave.sourceRecord.id,
+                            virtualId: isOriginalDay
+                                ? String(activeOpenLeave.sourceRecord.id)
+                                : `${activeOpenLeave.sourceRecord.id}__day_${dayCounter}`,
+                            date: dayStr,
+                            status: 'إجازة مفتوحة',
+                            leaveDayNumber: dayCounter,
+                            leaveStartDate: activeOpenLeave.startDate,
+                            isGeneratedContinuation: !isOriginalDay,
+                            sortOrder: isOriginalDay ? 0 : 1
+                        });
+                        dayCounter++;
+                        cursor.setDate(cursor.getDate() + 1);
+                    }
+
+                    activeOpenLeave = null;
+                };
+
+                empList.forEach(rec => {
+                    if (rec.status === 'إجازة مفتوحة') {
+                        if (activeOpenLeave) {
+                            const prevDay = addDaysToDateStr(rec.date, -1);
+                            flushOpenLeave(prevDay >= activeOpenLeave.startDate ? prevDay : activeOpenLeave.startDate, true);
+                        }
+                        activeOpenLeave = {
+                            sourceRecord: rec,
+                            startDate: rec.date
+                        };
+                    } else if (rec.status === 'عودة من الإجازة') {
+                        if (activeOpenLeave) {
+                            const dayBeforeReturn = addDaysToDateStr(rec.date, -1);
+                            if (dayBeforeReturn >= activeOpenLeave.startDate) {
+                                flushOpenLeave(dayBeforeReturn, true);
+                            } else {
+                                activeOpenLeave = null;
+                            }
+                        }
+                        expanded.push({
+                            ...rec,
+                            virtualId: String(rec.id),
+                            isGeneratedContinuation: false,
+                            sortOrder: 2
+                        });
+                    } else {
+                        expanded.push({
+                            ...rec,
+                            virtualId: String(rec.id),
+                            isGeneratedContinuation: false,
+                            sortOrder: 0
+                        });
+                    }
+                });
+
+                if (activeOpenLeave) {
+                    const targetEnd = todayStr >= activeOpenLeave.startDate ? todayStr : activeOpenLeave.startDate;
+                    flushOpenLeave(targetEnd, true);
+                }
+            });
+
+            return expanded.sort(compareRecordsOldestFirst);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
-            const today = new Date().toISOString().split('T')[0];
+            const today = formatLocalDate(new Date());
             document.getElementById('input-date').value = today;
 
             if (db) {
@@ -425,6 +571,10 @@
 
             document.getElementById('pin-input').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') verifyPin();
+            });
+
+            document.getElementById('edit-emp-name-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') saveEditedEmployeeName();
             });
 
             document.addEventListener('click', function(e) {
@@ -544,7 +694,8 @@
                 alert("يرجى تسجيل الدخول بصلاحية مشرف أو أدمن لتسجيل العودة.");
                 return;
             }
-            const today = new Date().toISOString().split('T')[0];
+            const today = formatLocalDate(new Date());
+            const statusInfo = getEmployeeCurrentStatus(empName, records);
             const recordId = Date.now() + Math.floor(Math.random() * 1000);
             const newRec = {
                 id: recordId,
@@ -559,7 +710,8 @@
                 db.ref('records/' + recordId).set(newRec);
             }
             refreshRecordsDisplay();
-            alert(`تم تسجيل (عودة من الإجازة) للموظف ${empName} بتاريخ ${today} وأصبح مباشراً في العمل.`);
+            const daysMsg = statusInfo.isOnLeave ? ` (مدة الإجازة المفتوحة: ${statusInfo.days} يوم)` : '';
+            alert(`تم تسجيل (عودة من الإجازة) للموظف ${empName} بتاريخ ${today}${daysMsg} وأصبح مباشراً في العمل.`);
         }
 
         function populateDropdownOptions(resultsContainer, list) {
@@ -612,7 +764,7 @@
         function saveAllInputs() {
             let dateVal = document.getElementById('input-date').value;
             if (!dateVal) {
-                dateVal = new Date().toISOString().split('T')[0];
+                dateVal = formatLocalDate(new Date());
             }
 
             const rowElements = document.querySelectorAll('#rows-container > div[id^="row-"]');
@@ -702,37 +854,44 @@
             }
         }
 
-        // حساب حالة الموظف الحالية:
-        // "إجازة مفتوحة" تبقى مستمرة حتى تسجيل "عودة من الإجازة"
-        // بينما "إجازة" تعتبر ليوم واحد ولا تفتح إجازة مستمرة
+        // حساب حالة الموظف الحالية وعدّاد أيام الإجازة المفتوحة:
+        // - "إجازة" تعتبر ليوم واحد ولا تفتح إجازة مستمرة
+        // - "إجازة مفتوحة" تبقى مستمرة وتعد الأيام لحين تسجيل "عودة من الإجازة"
         function getEmployeeCurrentStatus(empName, allRecords) {
             const chronological = [...allRecords]
                 .filter(r => r.name === empName)
-                .sort(compareRecordsChronological);
+                .sort(compareRecordsOldestFirst);
 
             let isOnOpenLeave = false;
             let leaveStartDate = null;
+            let lastCompletedLeave = null;
 
             chronological.forEach(r => {
                 if (r.status === 'إجازة مفتوحة') {
                     isOnOpenLeave = true;
                     leaveStartDate = r.date;
                 } else if (r.status === 'عودة من الإجازة') {
+                    if (isOnOpenLeave && leaveStartDate) {
+                        lastCompletedLeave = {
+                            startDate: leaveStartDate,
+                            endDate: r.date,
+                            days: calculateDaysBetween(leaveStartDate, r.date)
+                        };
+                    }
                     isOnOpenLeave = false;
                     leaveStartDate = null;
                 }
             });
 
             if (isOnOpenLeave && leaveStartDate) {
-                const start = new Date(leaveStartDate + 'T00:00:00');
-                const now = new Date();
-                const diffTime = now - start;
-                const diffDays = Math.max(1, Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1);
+                const todayStr = formatLocalDate(new Date());
+                const diffDays = calculateDaysBetween(leaveStartDate, todayStr);
                 return {
                     isOnLeave: true,
                     status: 'مجاز حالياً',
                     since: leaveStartDate,
-                    days: diffDays
+                    days: diffDays,
+                    lastCompletedLeave
                 };
             }
 
@@ -740,8 +899,17 @@
                 isOnLeave: false,
                 status: 'مباشر في العمل',
                 since: null,
-                days: 0
+                days: 0,
+                lastCompletedLeave
             };
+        }
+
+        function formatDisplayRecordStatus(rec) {
+            if (rec.status === 'إجازة مفتوحة') {
+                const dayNum = rec.leaveDayNumber || 1;
+                return `إجازة مفتوحة (اليوم ${dayNum})`;
+            }
+            return formatStatusLabel(rec.status);
         }
 
         function renderRecordsTable() {
@@ -752,7 +920,7 @@
 
             tbody.innerHTML = '';
 
-            let filteredRecords = [...records];
+            let filteredRecords = getExpandedRecords(records);
             if (filterDate) {
                 filteredRecords = filteredRecords.filter(r => r.date === filterDate);
             }
@@ -760,7 +928,8 @@
                 filteredRecords = filteredRecords.filter(r => (r.name || '').toLowerCase().includes(searchQuery));
             }
 
-            filteredRecords.sort(compareRecordsNewestFirst);
+            // ترتيب السجلات: الأقدم في البداية والأحدث في الأخير
+            filteredRecords.sort(compareRecordsOldestFirst);
 
             countBadge.innerText = `عدد السجلات: ${filteredRecords.length}`;
 
@@ -774,7 +943,15 @@
 
             filteredRecords.forEach(rec => {
                 const badgeColor = getStatusBadgeStyle(rec.status);
-                const statusLabel = formatStatusLabel(rec.status);
+                const statusLabel = formatDisplayRecordStatus(rec);
+
+                const actionButtonsHtml = rec.isGeneratedContinuation
+                    ? `<span class="text-xs text-slate-400">متابعة تلقائية (منذ ${rec.leaveStartDate})</span>`
+                    : `
+                        <button onclick="printSingleRecord(${rec.id}, '${rec.date}', ${rec.leaveDayNumber || 1}, '${rec.status}')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold" title="طباعة"><i class="fa-solid fa-print"></i></button>
+                        ${allowEdit ? `<button onclick="openEditModal(${rec.id})" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold" title="تعديل"><i class="fa-solid fa-pen"></i></button>` : ''}
+                        ${allowDelete ? `<button onclick="deleteRecord(${rec.id})" class="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold" title="حذف الحركة"><i class="fa-solid fa-trash"></i></button>` : ''}
+                    `;
 
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-800/40 transition font-semibold";
@@ -783,11 +960,7 @@
                     <td class="p-4 text-slate-300">${rec.date}</td>
                     <td class="p-4"><span class="px-3 py-1.5 rounded-xl border text-xs sm:text-sm font-bold ${badgeColor}">${statusLabel}</span></td>
                     <td class="p-4 text-slate-300">${rec.penalty ? rec.penalty : '-'}</td>
-                    <td class="p-4 text-center flex justify-center gap-2">
-                        <button onclick="printSingleRecord(${rec.id})" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold" title="طباعة"><i class="fa-solid fa-print"></i></button>
-                        ${allowEdit ? `<button onclick="openEditModal(${rec.id})" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold" title="تعديل"><i class="fa-solid fa-pen"></i></button>` : ''}
-                        ${allowDelete ? `<button onclick="deleteRecord(${rec.id})" class="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold" title="حذف الحركة"><i class="fa-solid fa-trash"></i></button>` : ''}
-                    </td>
+                    <td class="p-4 text-center flex justify-center gap-2">${actionButtonsHtml}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -845,6 +1018,7 @@
 
             const allowEdit = canEditRecord();
             const allowDelete = canDeleteRecord();
+            const allExpanded = getExpandedRecords(records);
 
             filteredEmployees.forEach(emp => {
                 const dateFilter = savedDateFilters[emp] || '';
@@ -852,7 +1026,7 @@
 
                 const currentEmpStatus = getEmployeeCurrentStatus(emp, records);
 
-                let empRecords = records.filter(r => r.name === emp);
+                let empRecords = allExpanded.filter(r => r.name === emp);
                 if (dateFilter) {
                     empRecords = empRecords.filter(r => r.date === dateFilter);
                 }
@@ -860,7 +1034,8 @@
                     empRecords = empRecords.filter(r => (r.date || '').startsWith(monthFilter));
                 }
 
-                empRecords.sort(compareRecordsNewestFirst);
+                // ترتيب سجلات الموظف: الأقدم في البداية والأحدث في الأخير
+                empRecords.sort(compareRecordsOldestFirst);
 
                 let recordsHtml = '';
                 if (empRecords.length === 0) {
@@ -868,7 +1043,15 @@
                 } else {
                     empRecords.forEach(rec => {
                         const badgeColor = getStatusBadgeStyle(rec.status);
-                        const statusText = formatStatusLabel(rec.status);
+                        const statusText = formatDisplayRecordStatus(rec);
+
+                        const controlsHtml = rec.isGeneratedContinuation
+                            ? `<span class="text-xs text-slate-400 px-2">متابعة يومية</span>`
+                            : `
+                                <button onclick="printSingleRecord(${rec.id}, '${rec.date}', ${rec.leaveDayNumber || 1}, '${rec.status}')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold" title="طباعة"><i class="fa-solid fa-print"></i></button>
+                                ${allowEdit ? `<button onclick="openEditModal(${rec.id})" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 px-3 py-1.5 rounded-xl text-xs font-bold" title="تعديل"><i class="fa-solid fa-pen"></i></button>` : ''}
+                                ${allowDelete ? `<button onclick="deleteRecord(${rec.id})" class="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-1.5 rounded-xl text-xs font-bold" title="حذف الحركة"><i class="fa-solid fa-trash"></i></button>` : ''}
+                            `;
 
                         recordsHtml += `
                             <div class="bg-slate-900/70 border border-slate-800 p-3.5 rounded-2xl flex flex-wrap justify-between items-center gap-2 text-sm font-semibold shadow-inner">
@@ -876,11 +1059,7 @@
                                     <span class="text-slate-200"><i class="fa-regular fa-calendar ml-1.5 text-blue-400"></i>${rec.date}</span>
                                     <span class="px-2.5 py-1 rounded-xl border text-xs ${badgeColor} font-bold">${statusText} ${rec.penalty ? `(رقم: ${rec.penalty})` : ''}</span>
                                 </div>
-                                <div class="flex gap-1.5">
-                                    <button onclick="printSingleRecord(${rec.id})" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold" title="طباعة"><i class="fa-solid fa-print"></i></button>
-                                    ${allowEdit ? `<button onclick="openEditModal(${rec.id})" class="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 px-3 py-1.5 rounded-xl text-xs font-bold" title="تعديل"><i class="fa-solid fa-pen"></i></button>` : ''}
-                                    ${allowDelete ? `<button onclick="deleteRecord(${rec.id})" class="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-1.5 rounded-xl text-xs font-bold" title="حذف الحركة"><i class="fa-solid fa-trash"></i></button>` : ''}
-                                </div>
+                                <div class="flex gap-1.5 items-center">${controlsHtml}</div>
                             </div>
                         `;
                     });
@@ -892,8 +1071,14 @@
                 if (currentEmpStatus.isOnLeave) {
                     liveStatusBadge = `<span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-xl text-xs font-bold animate-pulse" title="إجازة مفتوحة منذ: ${currentEmpStatus.since}"><i class="fa-solid fa-umbrella-beach ml-1"></i> مجاز (${currentEmpStatus.days} يوم - منذ ${currentEmpStatus.since})</span>`;
                     if (allowEdit) {
-                        returnActionBtn = `<button onclick="quickReturnFromLeave('${emp.replace(/'/g, "\\'")}')" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-xl text-xs font-bold transition" title="تسجيل عودة من الإجازة"><i class="fa-solid fa-right-to-bracket ml-1"></i> تسجيل عودة</button>`;
+                        returnActionBtn = `<button onclick="quickReturnFromLeave('${emp.replace(/'/g, "\\'")}')" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-xl text-xs font-bold transition" title="تسجيل عودة من الإجازة"><i class="fa-solid fa-right-to-bracket ml-1"></i> العودة من الإجازة</button>`;
                     }
+                }
+
+                let lastLeaveInfoHtml = '';
+                if (!currentEmpStatus.isOnLeave && currentEmpStatus.lastCompletedLeave) {
+                    const l = currentEmpStatus.lastCompletedLeave;
+                    lastLeaveInfoHtml = `<div class="text-xs text-slate-400 bg-slate-900/50 border border-slate-800/80 px-3 py-2 rounded-xl">آخر إجازة مفتوحة: من <strong class="text-slate-200">${l.startDate}</strong> إلى <strong class="text-slate-200">${l.endDate}</strong> (المدة: <strong class="text-emerald-400">${l.days} يوم</strong>)</div>`;
                 }
 
                 const card = document.createElement('div');
@@ -908,6 +1093,8 @@
                             ${returnActionBtn}
                         </div>
                     </div>
+
+                    ${lastLeaveInfoHtml}
 
                     <div class="grid grid-cols-2 gap-2.5 bg-slate-900/40 p-3 rounded-2xl border border-slate-800/80">
                         <div>
@@ -992,9 +1179,13 @@
             }
         }
 
-        function printSingleRecord(id) {
+        function printSingleRecord(id, customDate = null, dayNum = 1, customStatus = null) {
             const rec = records.find(r => r.id === id);
             if (!rec) return;
+
+            const displayDate = customDate || rec.date;
+            const statusVal = customStatus || rec.status;
+            const labelText = statusVal === 'إجازة مفتوحة' ? `إجازة مفتوحة (اليوم ${dayNum})` : formatStatusLabel(statusVal);
 
             const printWindow = window.open('', '_blank', 'height=600,width=800');
             if (!printWindow) {
@@ -1019,8 +1210,8 @@
                     </div>
                     <div class="details">
                         <p><strong>اسم الموظف:</strong> ${rec.name}</p>
-                        <p><strong>التاريخ:</strong> ${rec.date}</p>
-                        <p><strong>الحالة:</strong> ${formatStatusLabel(rec.status)}</p>
+                        <p><strong>التاريخ:</strong> ${displayDate}</p>
+                        <p><strong>الحالة:</strong> ${labelText}</p>
                         ${rec.penalty ? `<p><strong>رقم العقوبة:</strong> ${rec.penalty}</p>` : ''}
                     </div>
                     <script>
@@ -1036,13 +1227,14 @@
 
         function printAllRecords() {
             const filterDate = document.getElementById('global-table-date')?.value || '';
-            let targetRecords = [...records];
+            let targetRecords = getExpandedRecords(records);
 
             if (isTableView && filterDate) {
                 targetRecords = targetRecords.filter(r => r.date === filterDate);
             }
 
-            targetRecords.sort(compareRecordsNewestFirst);
+            // ترتيب السجلات: الأقدم في البداية والأحدث في الأخير
+            targetRecords.sort(compareRecordsOldestFirst);
 
             const printWindow = window.open('', '_blank', 'height=600,width=800');
             if (!printWindow) {
@@ -1054,7 +1246,7 @@
                 <tr>
                     <td style="border: 1px solid #ddd; padding: 10px;">${r.name}</td>
                     <td style="border: 1px solid #ddd; padding: 10px;">${r.date}</td>
-                    <td style="border: 1px solid #ddd; padding: 10px;">${formatStatusLabel(r.status)}</td>
+                    <td style="border: 1px solid #ddd; padding: 10px;">${formatDisplayRecordStatus(r)}</td>
                     <td style="border: 1px solid #ddd; padding: 10px;">${r.penalty || '-'}</td>
                 </tr>
             `).join('');
@@ -1074,7 +1266,7 @@
                 </head>
                 <body>
                     <h2>نظام الحضور والغياب لمعامل القالب - تقرير السجلات</h2>
-                    <p>${filterDate ? 'التاريخ المحدد: ' + filterDate : 'التقرير الشامل لكافة السجلات (الأحدث أولاً)'}</p>
+                    <p>${filterDate ? 'التاريخ المحدد: ' + filterDate : 'التقرير الشامل لكافة السجلات (من الأقدم إلى الأحدث)'}</p>
                     <table>
                         <thead>
                             <tr>
@@ -1115,6 +1307,53 @@
             }
         }
 
+        function openEditEmpModal(oldName) {
+            document.getElementById('old-emp-name').value = oldName;
+            document.getElementById('edit-emp-name-input').value = oldName;
+            document.getElementById('edit-emp-modal').classList.remove('hidden');
+            document.getElementById('edit-emp-name-input').focus();
+        }
+
+        function closeEditEmpModal() {
+            document.getElementById('edit-emp-modal').classList.add('hidden');
+        }
+
+        function saveEditedEmployeeName() {
+            const oldName = document.getElementById('old-emp-name').value;
+            const newName = document.getElementById('edit-emp-name-input').value.trim();
+
+            if (!newName) {
+                alert("يرجى إدخال اسم الموظف الجديد!");
+                return;
+            }
+
+            if (newName !== oldName && employees.includes(newName)) {
+                alert("هذا الاسم موجود مسبقاً في قائمة الموظفين!");
+                return;
+            }
+
+            employees = employees.map(e => e === oldName ? newName : e);
+            if (db) {
+                db.ref('employees').set(employees);
+            }
+
+            records = records.map(rec => {
+                if (rec.name === oldName) {
+                    const updated = { ...rec, name: newName };
+                    if (db) {
+                        db.ref('records/' + rec.id).set(updated);
+                    }
+                    return updated;
+                }
+                return rec;
+            });
+
+            closeEditEmpModal();
+            renderEmployeesListControl();
+            refreshRecordsDisplay();
+            alert("تم تعديل اسم الموظف وتحديث سجلاته بنجاح!");
+        }
+
         function deleteEmployee(name) {
             if (confirm(`هل أنت متأكد من حذف الموظف (${name})؟`)) {
                 employees = employees.filter(e => e !== name);
@@ -1130,10 +1369,14 @@
             if (!list) return;
             list.innerHTML = '';
             employees.forEach(emp => {
+                const safeName = emp.replace(/'/g, "\\'");
                 list.innerHTML += `
-                    <div class="flex justify-between items-center bg-slate-800/80 p-3 rounded-2xl border border-slate-700/50 font-semibold">
-                        <span>${emp}</span>
-                        <button onclick="deleteEmployee('${emp.replace(/'/g, "\\'")}')" class="text-red-400 hover:text-red-300 p-1"><i class="fa-solid fa-trash"></i></button>
+                    <div class="flex justify-between items-center bg-slate-800/80 p-3 rounded-2xl border border-slate-700/50 font-semibold gap-2">
+                        <span class="truncate">${emp}</span>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button onclick="openEditEmpModal('${safeName}')" class="text-blue-400 hover:text-blue-300 p-1.5 rounded-lg hover:bg-slate-700/60 transition" title="تعديل الاسم"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteEmployee('${safeName}')" class="text-red-400 hover:text-red-300 p-1.5 rounded-lg hover:bg-slate-700/60 transition" title="حذف الموظف"><i class="fa-solid fa-trash"></i></button>
+                        </div>
                     </div>
                 `;
             });
